@@ -39,3 +39,4 @@ out/
 
 *.json
 *.DS_Store
+/.gradle/

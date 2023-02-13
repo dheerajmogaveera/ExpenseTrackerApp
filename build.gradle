@@ -10,6 +10,7 @@ sourceCompatibility = '1.8'
 
 repositories {
 	mavenCentral()
+	
 }
 
 dependencies {
@@ -21,9 +22,28 @@ dependencies {
 testImplementation 'junit:junit:4.13.2'
 // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
 implementation 'org.apache.commons:commons-lang3:3.12.0'
-
+// https://mvnrepository.com/artifact/org.projectlombok/lombok
+compileOnly 'org.projectlombok:lombok:1.18.24'
+annotationProcessor 'org.projectlombok:lombok:1.18.24'
 	
 }
+
+abstract class GreetingTask extends DefaultTask {
+    @Input
+    abstract Property<String> getGreeting()
+    
+    GreetingTask() {
+        greeting.convention('hello from GreetingTask')
+    }
+
+    @TaskAction
+    def greet() {
+        println greeting.get()
+    }
+}
+
+// Use the default greeting
+tasks.register('hello', GreetingTask)
 
 tasks.named('test') {
 	useJUnitPlatform()

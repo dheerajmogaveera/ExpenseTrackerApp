@@ -1,13 +1,14 @@
 package com.expense.tracker.app.controller;
 
+import java.text.ParseException;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,12 +25,12 @@ import com.expense.tracker.app.model.Expense;
 import com.expense.tracker.app.model.Report;
 import com.expense.tracker.app.service.ExpenseTrackerService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author dheeraj
  *
  */
+//@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/v1/expenses")
 public class ExpensesTrackerController {
@@ -37,50 +38,43 @@ public class ExpensesTrackerController {
 	@Autowired
 	private ExpenseTrackerService expenseTrackerService;
 
-	private Logger logger = LoggerFactory.getLogger(ExpensesTrackerController.class);
-
-	private ObjectMapper objectMapper = new ObjectMapper();
-
-	@GetMapping("")
+	@GetMapping
 	public ResponseEntity<List<Expense>> getAllExpenses() {
-		logger.info("Fetching All the Expenses ...........");
-		return new ResponseEntity<>(expenseTrackerService.getAllExpenses(), HttpStatus.OK);
+		HttpHeaders responseHeaders=new HttpHeaders();
+		responseHeaders.set("Access-Control-Allow-Origin", "http://localhost:3000");
+		return  ResponseEntity.ok().headers(responseHeaders).body(expenseTrackerService.getAllExpenses()) ;
 	}
 
 	@GetMapping("/{title}")
-	public ResponseEntity<Expense> getExpenseByTitle(@PathVariable("title") String title) {
-		logger.info("Fetching Expense for the title:{}", title);
-		return new ResponseEntity<Expense>(expenseTrackerService.getExpenseByTitle(title), HttpStatus.OK);
+	public ResponseEntity<List<Expense>> getExpenseByTitle(@PathVariable("title") String title) throws NoSuchExpenseException {
+		return new ResponseEntity<List<Expense>>(expenseTrackerService.getExpenseByTitle(title), HttpStatus.OK);
 	}
 
-	@PostMapping("")
+	@PostMapping
 	public ResponseEntity<Expense> addExpense(@RequestBody Expense expense)
 			throws JsonProcessingException, InvalidInputException {
-		logger.info("Adding Expense with following values :{}", objectMapper.writeValueAsString(expense));
+
 		if (StringUtils.isBlank(expense.getTitle()) || StringUtils.isBlank(expense.getAmount().toString())
 				|| expense.getCategories().isEmpty() || expense.getCategories() == null)
 			throw new InvalidInputException();
 		return new ResponseEntity<Expense>(expenseTrackerService.addExpense(expense), HttpStatus.CREATED);
 	}
 
-	@PutMapping("")
+	@PutMapping
 	public ResponseEntity<Expense> updateExpense(@RequestBody Expense expense)
 			throws JsonProcessingException, NoSuchExpenseException {
-		logger.info("Updating Expense with title:{} with the value:{}", expense.getTitle(),
-				objectMapper.writeValueAsString(expense));
 		return new ResponseEntity<Expense>(expenseTrackerService.updateExpense(expense), HttpStatus.NO_CONTENT);
 	}
 
-	@DeleteMapping("")
-	public ResponseEntity<Expense> deleteExpense(@RequestBody Expense expense) {
-		return new ResponseEntity<Expense>(expenseTrackerService.deleteExpense(expense), HttpStatus.OK);
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Expense> deleteExpense(@PathVariable("id") Long id) throws NoSuchExpenseException {
+		return new ResponseEntity<Expense>(expenseTrackerService.deleteExpense(id), HttpStatus.OK);
 	}
 
 	@GetMapping("/report")
 	public ResponseEntity<Report> generateReport(@RequestParam String range,
 			@RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate)
-			throws InvalidInputException {
-		logger.info("Generating report for with values- range:{}, startDate:{},endDate:{}", range, startDate, endDate);
+			throws InvalidInputException, ParseException {
 		return new ResponseEntity<Report>(expenseTrackerService.generateReport(range, startDate, endDate),
 				HttpStatus.OK);
 	}
