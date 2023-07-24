@@ -1,7 +1,7 @@
 name: Workflow for FullAuthApi module
 on:
   pull_request:
-   types: [closed]
+   types: [open]
 
 jobs:
   pr_template_check:
