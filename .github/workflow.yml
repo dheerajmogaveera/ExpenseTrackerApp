@@ -1,0 +1,8 @@
+name: Workflow for FullAuthApi module
+on:
+  pull_request:
+   types: [closed]
+
+jobs:
+  pr_template_check:
+    uses: dheerajmogaveera/workflows/.github/workflows/pr_template.md@master
