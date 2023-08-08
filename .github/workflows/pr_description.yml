@@ -15,7 +15,7 @@ jobs:
         run: |
           prNumber="${{ github.event.pull_request.number }}"
           prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
-          template="{\"body\": \"Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\"}"
+          template="{\"body\": \"Checklist:\n - [ ]  My code follows the style guidelines of this project.\n - [ ] I have performed a self-review of my own code.\n - [ ] I have commented my code, particularly in hard-to-understand areas.\n - [ ] I have made corresponding changes to the documentation.\n - [ ] My changes generate no new warnings.\n - [ ] I have added tests that prove my fix is effective or that my feature works.\n - [ ] New and existing unit tests pass locally with my changes.\n - [ ] Any dependent changes have been merged and published in downstream modules.\n - [ ] I have checked my code and corrected any misspellings.\n\"}"
           echo "$template" > payload.json
           bearerToken="Bearer ${{ secrets.PAT_TOKEN }}"
           echo "$template" > payload.json
