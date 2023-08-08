@@ -13,14 +13,6 @@ jobs:
 
       - name: Update PR Description
         run: |
-          jiraTitle="${{ steps.jira.outputs.summary }}"
-          jiraDescription="${{ steps.jira.outputs.description }}"
-          jiraUrl="${{ steps.jira.outputs.url }}"
-          prNumber="${{ github.event.pull_request.number }}"
-          sonarUrl="https://sonar.anywhere.co/dashboard?id=adaptiveu&pullRequest=${prNumber}"
-          prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
-          bearerToken="Bearer ${{ secrets.GITHUB_TOKEN }}"
-
           template="{Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\n## Sonar Results:\n$sonarUrl\n\n\n## Reference Docs:\n[PR Standards](https://docs.google.com/document/d/1CGi67ib9S-EUmYRmhBLxbc2tLzv0I0C_DXUXnZ-vUkg/edit)\n[PR Review Guideline](https://docs.google.com/document/d/15Wt4jmwLwGkkF1ahCcb_FDKEF6Gbic-yDMbhbXwthRc/edit#)\"}"
           echo "$template" > payload.json
           
