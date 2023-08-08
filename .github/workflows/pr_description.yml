@@ -1,29 +1,257 @@
-name: Update PR Description with Jira Title
+name: Gradle CI
+
 on:
-  pull_request:
-    types: [opened]
+  workflow_call:
+    inputs:
+      timeout-minutes:
+        required: false
+        description: workflow timeout in minutes
+        default: 15
+        type: number
+      working-directory:
+        required: false
+        description: Working directory. Default './'
+        default: './'
+        type: string
+      java-jdk-distribution:
+        required: false
+        description: JDK distribution used for building project
+        type: string
+        default: 'temurin'
+      jdk-architecture:
+        required: false
+        description: JDK architecture used for building project
+        type: string
+        default: 'x64'
+      sonar-jdk-version:
+        required: false
+        description: JDK version used for SonarQube
+        type: string
+      sonar-jdk-distribution:
+        required: false
+        description: JDK distribution used for SonarQube
+        type: string
+        default: 'temurin'
+      java-jdk-version:
+        required: false
+        description: JDK version used for building project
+        type: string
+        default: '11'
+      gradle-version:
+        required: false
+        description: Gradle version used for building project
+        type: string
+        default: 'wrapper'
+      test-report-file-name:
+        required: false
+        description: test report file name to upload as artifact
+        type: string
+      junit-test-reports:
+        required: false
+        description: Matcher for JUnit XML test reports used for generation of summary
+        type: string
+        default: build/test-results/test/*.xml,*/build/test-results/test/*.xml
+      actions-ref:
+        required: false
+        description: version / branch of awcore-workflows to use for actions
+        default: 'master'
+        type: string
+      delete-merged-branch:
+        required: false
+        default: true
+        type: boolean
+        description: delete merged branch
+      exclude-branches:
+        required: false
+        description: branches to exclude from delete branch
+        default: 'main,release/staging,master'
+        type: string
+      env-vars:
+        description: List of environment variables to set up, given in env=value format.
+        required: false
+        type: string
+      environment:
+        required: false
+        description: Environment name
+        type: string
+      node-version:
+        required: false
+        description: Node version tag
+        type: number
+        default: 16
 
 jobs:
-  update_pr_description:
+  gradle-ci:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event.inputs.timeout-minutes || inputs.timeout-minutes }}
+    environment: ${{ github.event.inputs.environment || inputs.environment }}
     permissions:
       pull-requests: write
+    env:
+      SONAR_JDK_DISTRIBUTION: ${{ github.event.inputs.sonar-jdk-distribution || inputs.sonar-jdk-distribution }}
+      SONAR_JDK_VERSION: ${{ github.event.inputs.sonar-jdk-version || inputs.sonar-jdk-version }}
+      JAVA_JDK_VERSION: ${{ github.event.inputs.java-jdk-version || inputs.java-jdk-version }}
+      GRADLE_VERSION: ${{ github.event.inputs.gradle-version || inputs.gradle-version }}
+      WORKING_DIRECTORY: ${{ github.event.inputs.working-directory || inputs.working-directory }}
+      JAVA_JDK_DISTRIBUTION: ${{ github.event.inputs.java-jdk-distribution || inputs.java-jdk-distribution }}
+      JDK_ARCHITECTURE: ${{ github.event.inputs.jdk-architecture || inputs.jdk-architecture }}
+      TEST_REPORT_FILE_NAME: ${{ github.event.inputs.test-report-file-name || inputs.test-report-file-name }}
+      JUNIT_TEST_REPORTS: ${{ github.event.inputs.junit-test-reports || inputs.junit-test-reports }}
+      ACTIONS_REF: ${{ github.event.inputs.actions-ref || inputs.actions-ref }}
+      DELETE_MERGED_BRANCH: ${{ github.event.inputs.delete-merged-branch || inputs.delete-merged-branch }}
+      ENV_VARS: ${{ inputs.env-vars || github.event.inputs.env-vars }}
+      EXCLUDE_BRANCHES: ${{ github.event.inputs.exclude-branches || inputs.exclude-branches }}
+      NODE_VERSION: ${{ github.event.inputs.node-version || inputs.node-version }}
+    defaults:
+      run:
+        working-directory: ${{ github.event.inputs.working-directory || inputs.working-directory }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Checkout Project Repository
+        uses: actions/checkout@v3
 
-      - name: Update PR Description
+      - name: Setup pr validation checklist
         run: |
           prNumber="${{ github.event.pull_request.number }}"
           prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
           template="{\"body\": \"Checklist:\n - [ ]  My code follows the style guidelines of this project.\n - [ ] I have performed a self-review of my own code.\n - [ ] I have commented my code, particularly in hard-to-understand areas.\n - [ ] I have made corresponding changes to the documentation.\n - [ ] My changes generate no new warnings.\n - [ ] I have added tests that prove my fix is effective or that my feature works.\n - [ ] New and existing unit tests pass locally with my changes.\n - [ ] Any dependent changes have been merged and published in downstream modules.\n - [ ] I have checked my code and corrected any misspellings.\n\"}"
           echo "$template" > payload.json
           bearerToken="Bearer ${{ secrets.GITHUB_TOKEN }}"
-          echo "$template" > payload.json
 
           curl -X PATCH "$prDescriptionURL" \
             -H "Authorization: $bearerToken" \
             -H "Content-Type: application/json" \
             --data-binary "@payload.json"
-          
-          
+
+      - name: Checkout workflows repo # required so we can reference the actions locally
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.ACTIONS_REF }}
+          path: sharedactions
+          repository: Adaptavant/awcore-workflows
+          token: ${{ secrets.WORKFLOWS_TOKEN }}
+          sparse-checkout: |
+            .github/actions
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set environment variables
+        if: ${{ env.ENV_VARS }}
+        run: |
+          IFS=$'\n'
+          for i in ${{ env.ENV_VARS }}
+          do
+            echo "$i" >> $GITHUB_ENV
+          done
+
+      - name: Expose github environment as shell variables
+        env:
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
+          VARS_CONTEXT: ${{ toJson(vars) }}
+        run: |
+          to_envs() { jq -rR "fromjson? | to_entries[] | select(length > 0) | \"\(.key)=\(.value)\""; }
+          echo "$SECRETS_CONTEXT" | tr -d '\n' | to_envs >> $GITHUB_ENV
+          echo "$VARS_CONTEXT" | tr -d '\n' | to_envs >> $GITHUB_ENV
+
+      - name: Get Actor Type [BOT/PR]
+        if: ${{ github.actor == 'dependabot[bot]' }}
+        run: export ACTOR_TYPE=BOT
+        shell: bash
+
+      - name: Set up JDK for SonarQube
+        if: ${{ github.actor != 'dependabot[bot]' && env.SONAR_JDK_VERSION != '' }}
+        id: sonarjdk
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.SONAR_JDK_VERSION }}
+          distribution: ${{ env.SONAR_JDK_DISTRIBUTION }}
+          architecture: ${{ env.JDK_ARCHITECTURE }}
+          cache: gradle
+
+      - name: Set up JDK
+        if: ${{ env.SONAR_JDK_VERSION != env.JAVA_JDK_VERSION }}
+        id: javajdk
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_JDK_VERSION }}
+          distribution: ${{ env.JAVA_JDK_DISTRIBUTION }}
+          architecture: ${{ env.JDK_ARCHITECTURE }}
+          cache: gradle
+
+      - name: Build Gradle
+        uses: gradle/gradle-build-action@v2
+        env:
+          GITHUB_USERNAME: 'Full Creative Ci'
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: test
+
+      - name: Gradle Test
+        env:
+          GITHUB_USERNAME: 'Full Creative Ci'
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: build -x test
+
+      - name: SonarQube Scan Pull Request
+        if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.merged == false }}
+        env:
+          GITHUB_USERNAME: 'Full Creative Ci'
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: sonarqube -Dorg.gradle.java.home=${{ steps.sonarjdk.outputs.path || steps.javajdk.outputs.path }} -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.pullrequest.key=${{ github.event.number }} -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} -x test
+
+      - name: SonarQube Scan Merged Pull Request
+        if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.merged == true }}
+        env:
+          GITHUB_USERNAME: 'Full Creative Ci'
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          arguments: sonarqube -Dorg.gradle.java.home=${{ steps.sonarjdk.outputs.path || steps.javajdk.outputs.path }} -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.branch.name=${{ github.event.pull_request.base.ref }} -x test
+
+      # Generate test summary
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test results
+          reporter: java-junit
+          path: ${{ env.JUNIT_TEST_REPORTS }}
+          fail-on-error: true
+
+      - name: Check if report exists
+        if: always() && (github.event.inputs.test-report-file-name != '' || inputs.test-report-file-name != '')
+        continue-on-error: true
+        id: report_check
+        run: |
+          if ls "${{ env.TEST_REPORT_FILE_NAME }}" >> /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Test report found ${{ env.TEST_REPORT_FILE_NAME }}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No test report found ${{ env.TEST_REPORT_FILE_NAME }}"
+          fi
+
+      - name: Upload test report
+        if: always() && steps.report_check.outputs.exists == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: ${{ env.TEST_REPORT_FILE_NAME }}
+
+      - name: Delete Merged Branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && env.DELETE_MERGED_BRANCH == 'true' }}
+        uses: ./sharedactions/.github/actions/delete-merged-branch/
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: ${{ env.EXCLUDE_BRANCHES }}
