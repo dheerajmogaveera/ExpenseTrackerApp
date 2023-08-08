@@ -15,7 +15,7 @@ jobs:
         run: |
           prNumber="${{ github.event.pull_request.number }}"
           prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
-          template="{\"body\": \"Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\n## Sonar Results:\n$sonarUrl\n\n\n## Reference Docs:\n[PR Standards](https://docs.google.com/document/d/1CGi67ib9S-EUmYRmhBLxbc2tLzv0I0C_DXUXnZ-vUkg/edit)\n[PR Review Guideline](https://docs.google.com/document/d/15Wt4jmwLwGkkF1ahCcb_FDKEF6Gbic-yDMbhbXwthRc/edit#)\"}"
+          template="{\"body\": \"Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\"}"
           echo "$template" > payload.json
           bearerToken="Bearer ${{ secrets.PAT_TOKEN }}"
           echo "$template" > payload.json
