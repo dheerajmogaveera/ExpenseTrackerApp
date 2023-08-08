@@ -11,44 +11,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Split Jira id from branch name
-        id: extract_branch_name
-        run: |
-            branch_name="${{github.event.pull_request.head.ref}}"
-            first_part=$(echo "$branch_name" | cut -d'/' -f1)
-            echo "::set-output name=jira_id::$first_part"
+      # - name: Split Jira id from branch name
+      #   id: extract_branch_name
+      #   run: |
+      #       branch_name="${{github.event.pull_request.head.ref}}"
+      #       first_part=$(echo "$branch_name" | cut -d'/' -f1)
+      #       echo "::set-output name=jira_id::$first_part"
 
-      - name: Fetch Jira details
-        id: jira
-        run: |
-          jiraIssueKey="${{ steps.extract_branch_name.outputs.jira_id }}"
+      # - name: Fetch Jira details
+      #   id: jira
+      #   run: |
+      #     jiraIssueKey="${{ steps.extract_branch_name.outputs.jira_id }}"
 
-          jiraAPIURL="https://anywhereworks.atlassian.net/rest/api/3/issue/${jiraIssueKey}"
-          jiraURL="https://anywhereworks.atlassian.net/browse/${jiraIssueKey}"
+      #     jiraAPIURL="https://anywhereworks.atlassian.net/rest/api/3/issue/${jiraIssueKey}"
+      #     jiraURL="https://anywhereworks.atlassian.net/browse/${jiraIssueKey}"
           
-          response=$(curl -s -u ${{ secrets.JIRA_USERNAME }}:${{ secrets.JIRA_API_TOKEN }} $jiraAPIURL)
-          jiraSummary=$(echo "$response" | jq -r '.fields.summary')
-          jiraDescription=$(echo "$response" | jq -r '.fields.description.content[0].content[0].text')
+      #     response=$(curl -s -u ${{ secrets.JIRA_USERNAME }}:${{ secrets.JIRA_API_TOKEN }} $jiraAPIURL)
+      #     jiraSummary=$(echo "$response" | jq -r '.fields.summary')
+      #     jiraDescription=$(echo "$response" | jq -r '.fields.description.content[0].content[0].text')
 
-          if [[ "$jiraDescription" == "null" || "$$jiraDescription" == " " ]]; then
-          jiraDescription="No Jira description provided"
-          fi
+      #     if [[ "$jiraDescription" == "null" || "$$jiraDescription" == " " ]]; then
+      #     jiraDescription="No Jira description provided"
+      #     fi
 
-          echo "::set-output name=summary::$jiraSummary"
-          echo "::set-output name=description::$jiraDescription"
-          echo "::set-output name=url::$jiraURL"
+      #     echo "::set-output name=summary::$jiraSummary"
+      #     echo "::set-output name=description::$jiraDescription"
+      #     echo "::set-output name=url::$jiraURL"
 
 
 
       - name: Update PR Description
         run: |
-          jiraTitle="${{ steps.jira.outputs.summary }}"
-          jiraDescription="${{ steps.jira.outputs.description }}"
-          jiraUrl="${{ steps.jira.outputs.url }}"
-          prNumber="${{ github.event.pull_request.number }}"
-          sonarUrl="https://sonar.anywhere.co/dashboard?id=adaptiveu&pullRequest=${prNumber}"
-          prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
-          bearerToken="Bearer ${{ secrets.GITHUB_TOKEN }}"
+          # jiraTitle="${{ steps.jira.outputs.summary }}"
+          # jiraDescription="${{ steps.jira.outputs.description }}"
+          # jiraUrl="${{ steps.jira.outputs.url }}"
+          # prNumber="${{ github.event.pull_request.number }}"
+          # sonarUrl="https://sonar.anywhere.co/dashboard?id=adaptiveu&pullRequest=${prNumber}"
+          # prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
+          # bearerToken="Bearer ${{ secrets.GITHUB_TOKEN }}"
 
           template="{\"body\": \"## Description:\n**Jira Summary**: $jiraTitle\n\n**Jira Description**: $jiraDescription\n\n## Jira Ticket:\n$jiraUrl\n\n## Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\n## Sonar Results:\n$sonarUrl\n\n\n## Reference Docs:\n[PR Standards](https://docs.google.com/document/d/1CGi67ib9S-EUmYRmhBLxbc2tLzv0I0C_DXUXnZ-vUkg/edit)\n[PR Review Guideline](https://docs.google.com/document/d/15Wt4jmwLwGkkF1ahCcb_FDKEF6Gbic-yDMbhbXwthRc/edit#)\"}"
           echo "$template" > payload.json
