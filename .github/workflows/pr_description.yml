@@ -21,7 +21,7 @@ jobs:
           prDescriptionURL="https://api.github.com/repos/${{ github.repository }}/pulls/${prNumber}"
           bearerToken="Bearer ${{ secrets.GITHUB_TOKEN }}"
 
-          template="{\"body\": \"## Description:\n**Jira Summary**: $jiraTitle\n\n**Jira Description**: $jiraDescription\n\n## Jira Ticket:\n$jiraUrl\n\n## Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\n## Sonar Results:\n$sonarUrl\n\n\n## Reference Docs:\n[PR Standards](https://docs.google.com/document/d/1CGi67ib9S-EUmYRmhBLxbc2tLzv0I0C_DXUXnZ-vUkg/edit)\n[PR Review Guideline](https://docs.google.com/document/d/15Wt4jmwLwGkkF1ahCcb_FDKEF6Gbic-yDMbhbXwthRc/edit#)\"}"
+          template="{Checklist:\n - [ ]  Code follows the coding style guidelines.\n - [ ] Tests have been added or updated.\n - [ ] Documentation has been updated if necessary.\n\n## Sonar Results:\n$sonarUrl\n\n\n## Reference Docs:\n[PR Standards](https://docs.google.com/document/d/1CGi67ib9S-EUmYRmhBLxbc2tLzv0I0C_DXUXnZ-vUkg/edit)\n[PR Review Guideline](https://docs.google.com/document/d/15Wt4jmwLwGkkF1ahCcb_FDKEF6Gbic-yDMbhbXwthRc/edit#)\"}"
           echo "$template" > payload.json
           
           
